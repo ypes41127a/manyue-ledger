@@ -89,7 +89,7 @@ describe('特殊情況', () => {
     b.items.push({ id: 'd-1', section: 'liability', group: '負債', name: '房貸' });
     b.months[0].started = true;
     b.months[0].values['a-bank-a'] = 1000;
-    b.months[0].values['e-living'] = 100;
+    b.months[0].values['e-meal'] = 100;
     b.months[0].values['d-1'] = 300;
     expect(computeLedger(b, off).netWorth[0]).toBe(900);
     expect(computeLedger(b, { liabilitiesEnabled: true }).netWorth[0]).toBe(600);

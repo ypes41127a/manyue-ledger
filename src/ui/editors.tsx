@@ -16,7 +16,7 @@ function useBook() {
   return { book, edit };
 }
 
-const DEFAULT_GROUP: Record<Section, string> = { asset: '生活', income: '其他收入', expense: '非計劃', invest: '投資', liability: '負債' };
+const DEFAULT_GROUP: Record<Section, string> = { asset: '生活', income: '其他收入', expense: '非固定支出', invest: '投資', liability: '負債' };
 const AUTO_LABEL: Partial<Record<ItemKind, string>> = { stockTW: '自動：台股市值', stockUS: '自動：美股市值', interestDividend: '自動加上現金股利' };
 
 export function ItemsEditor({ section }: { section: Section }) {

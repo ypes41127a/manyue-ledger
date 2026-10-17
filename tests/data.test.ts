@@ -16,7 +16,7 @@ describe('帶入上個月', () => {
     const jan = b.months[0];
     jan.started = true;
     jan.rates.USD = 32.5;
-    jan.values = { 'a-bank-a': 1000, 'i-salary': 500, 'i-bonus': 9999, 'e-phone': 399, 'e-living': 123, 'i-interest': 7 };
+    jan.values = { 'a-bank-a': 1000, 'i-salary': 500, 'i-bonus': 9999, 'e-telecom': 399, 'e-meal': 123, 'e-utility': 800, 'i-interest': 7 };
     jan.shares.t = 10;
     jan.prices.t = 900;
     jan.stock.TW = { cost: 8000, sell: 111, buy: 100, fee: 5 };
@@ -26,7 +26,7 @@ describe('帶入上個月', () => {
     prefillMonth(b, 1);
     const feb = b.months[1];
     expect(feb.started).toBe(true);
-    expect(feb.values).toEqual({ 'a-bank-a': 1000, 'i-salary': 500, 'e-phone': 399 });
+    expect(feb.values).toEqual({ 'a-bank-a': 1000, 'i-salary': 500, 'e-telecom': 399 });
     expect(feb.rates.USD).toBe(32.5);
     expect(feb.rates.JPY).toBe(0.2);
     expect(feb.shares.t).toBe(10);
@@ -170,5 +170,16 @@ describe('行事曆提醒', () => {
     const ics = buildReminderIcs(31, new Date(2026, 1, 10));
     expect(ics).toContain('BYMONTHDAY=-1');
     expect(ics).toContain('DTSTART;VALUE=DATE:20260228');
+  });
+});
+
+describe('預設範本', () => {
+  it('支出分為固定與非固定，兩個「其他」可填備註', () => {
+    const items = emptyYear(2026).items.filter((i) => i.section === 'expense');
+    const by = (g: string) => items.filter((i) => i.group === g).map((i) => i.name);
+    expect(by('固定支出')).toEqual(['孝親費', '房租', '水電費', '電信費', '訂閱費', '其他']);
+    expect(by('非固定支出')).toEqual(['餐費', '交通費', '娛樂/購物費', '旅遊', '其他']);
+    expect(items.filter((i) => i.note).map((i) => i.group)).toEqual(['固定支出', '非固定支出']);
+    expect(new Set(emptyYear(2026).items.map((i) => i.id)).size).toBe(emptyYear(2026).items.length);
   });
 });

@@ -141,8 +141,8 @@ function sampleBook(year: number): YearBook {
   add({ section: 'income', group: '獎金', name: L.income[1][0] }, L.income[1][1]);
   add({ section: 'income', group: '利息/股利', name: '利息/股利', kind: 'interestDividend' }, L.income[2][1]);
   for (const [name, row] of L.income.slice(3)) add({ section: 'income', group: '其他收入', name, note: true }, row);
-  for (const [name, row] of L.planned) add({ section: 'expense', group: '計劃', name, carry: true }, row);
-  for (const [name, row] of L.unplanned) add({ section: 'expense', group: '非計劃', name }, row);
+  for (const [name, row] of L.planned) add({ section: 'expense', group: '固定支出', name, carry: true }, row);
+  for (const [name, row] of L.unplanned) add({ section: 'expense', group: '非固定支出', name }, row);
   for (const [name, row] of L.invest) add({ section: 'invest', group: '投資', name }, row);
 
   // Excel 範例的股數搭配編造的股價會讓股票遠大於其他資產，這裡縮小為十分之一
