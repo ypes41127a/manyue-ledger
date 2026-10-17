@@ -12,9 +12,12 @@ import { exportBackup } from './actions';
 import { CurrencyEditor, FillDayPicker, HoldingsEditor, ItemsEditor } from './editors';
 import { daysSince, fmtDate, fmtMoney } from './format';
 import { Button, Card, downloadBlob, Modal, Segmented } from './kit';
+import { SyncCard } from './SyncUI';
+import { useSync } from '../sync/SyncProvider';
 
 export function SettingsPage() {
-  const { data, year, years, update, replace, setYear } = useStore();
+  const { data, meta, year, years, update, replace, setYear } = useStore();
+  const sync = useSync();
   const [section, setSection] = useState<Section>('asset');
   const [pending, setPending] = useState<{ data: AppData; summary: BackupSummary } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,6 +66,8 @@ export function SettingsPage() {
     <div className="space-y-4">
       {message && <div className="rounded-2xl bg-sunken px-4 py-3 text-sm" role="status">{message}</div>}
 
+      <SyncCard />
+
       <Card title="備份與還原">
         <p className="text-sm text-ink2">
           上次備份：{fmtDate(s.lastBackupAt)}
@@ -79,8 +84,17 @@ export function SettingsPage() {
 
       <Card title="資料存放說明">
         <ul className="list-disc space-y-1 pl-5 text-sm text-ink2">
-          <li>資料<b className="text-ink">只存在這台裝置的這個瀏覽器</b>，不會上傳，也沒有帳號可以登入找回。</li>
-          <li>換手機、換電腦或換瀏覽器時，請先「匯出備份」，再到新的地方「匯入備份」。</li>
+          {meta.linked ? (
+            <>
+              <li>資料存在<b className="text-ink">這台裝置的瀏覽器</b>，並同步到<b className="text-ink">你自己的 Google 雲端硬碟</b>。網站開發者看不到你的資料。</li>
+              <li>換手機或換電腦時，在新的地方用同一個 Google 帳號登入即可取回。</li>
+            </>
+          ) : (
+            <>
+              <li>資料<b className="text-ink">只存在這台裝置的這個瀏覽器</b>，不會上傳{sync.available ? '（除非開啟上方的雲端同步）' : '，也沒有帳號可以登入找回'}。</li>
+              <li>換手機、換電腦或換瀏覽器時，請先「匯出備份」，再到新的地方「匯入備份」{sync.available ? '，或開啟雲端同步' : ''}。</li>
+            </>
+          )}
           <li>清除瀏覽器資料、解除安裝瀏覽器，或 iPhone Safari 太久沒開，資料都可能消失。</li>
         </ul>
         <p className="mt-2 text-xs text-muted">
@@ -147,7 +161,7 @@ export function SettingsPage() {
 
       <Card title="清除資料">
         {s.isSample && <p className="mb-2 text-sm text-ink2">目前是範例資料。清除後會回到首次使用畫面，讓你從空白開始設定。</p>}
-        <Button variant="danger" onClick={() => window.confirm(s.isSample ? '確定清除範例資料？' : '確定清除這台裝置上的所有記帳資料嗎？請先確認已匯出備份，這個動作無法復原。') && replace(emptyAppData(new Date().getFullYear()))}>
+        <Button variant="danger" onClick={() => window.confirm(s.isSample ? '確定清除範例資料？' : meta.linked ? '確定清除這台裝置上的記帳資料？這台會同時登出雲端同步，雲端上的資料保留，之後登入可以取回。' : '確定清除這台裝置上的所有記帳資料嗎？請先確認已匯出備份，這個動作無法復原。') && replace(emptyAppData(new Date().getFullYear()))}>
           {s.isSample ? '清除範例資料' : '清除全部資料'}
         </Button>
       </Card>
@@ -165,7 +179,10 @@ export function SettingsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 rounded-xl bg-warnbg px-3 py-2 text-sm text-warnink">匯入後會<b>取代</b>這台裝置目前的所有記帳資料。</p>
+          <p className="mt-3 rounded-xl bg-warnbg px-3 py-2 text-sm text-warnink">
+            匯入後會<b>取代</b>這台裝置目前的所有記帳資料。
+            {meta.linked && '已開啟雲端同步，匯入的資料也會同步到雲端與其他裝置。'}
+          </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button onClick={() => setPending(null)}>取消</Button>
             <Button variant="primary" onClick={confirmImport}>確認匯入</Button>

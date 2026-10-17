@@ -1,17 +1,26 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AppData, YearBook } from '../core/types';
-import { loadApp, saveApp } from './db';
+import { loadApp, loadMeta, saveAll } from './db';
+import type { SyncMeta } from './db';
+import { withStamps } from './state';
+import type { State } from './state';
 
 interface Store {
   data: AppData;
+  meta: SyncMeta;
   year: number;
   book: YearBook;
   years: number[];
   setYear: (y: number) => void;
-  /** 直接修改 draft 即可，修改後自動存入 IndexedDB */
+  /** 直接修改 draft 即可，修改後自動存入 IndexedDB，並記錄哪些部分被改過 */
   update: (fn: (draft: AppData) => void) => void;
+  /** 整份取代（匯入備份、還原快照、清除資料）；變動的部分視為使用者修改 */
   replace: (data: AppData) => void;
+  /** 同步用：套用合併後的資料與同步資訊，不另外標記修改 */
+  applySync: (data: AppData | null, meta: Partial<SyncMeta>) => void;
+  /** 立即取得最新狀態（不等畫面更新） */
+  getLatest: () => State;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -28,17 +37,19 @@ function pickYear(data: AppData, preferred: number): number {
 }
 
 export function StoreProvider({ children, fallback }: { children: ReactNode; fallback: (error: string | null) => ReactNode }) {
-  const [data, setData] = useState<AppData | null>(null);
+  const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const pending = useRef<AppData | null>(null);
+  const pending = useRef<State | null>(null);
+  const latest = useRef<State | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    loadApp().then(
-      (d) => {
-        setData(d);
-        setYear((y) => pickYear(d, y));
+    Promise.all([loadApp(), loadMeta()]).then(
+      ([data, meta]) => {
+        latest.current = { data, meta };
+        setState(latest.current);
+        setYear((y) => pickYear(data, y));
       },
       (e) => setError(e instanceof Error ? e.message : String(e)),
     );
@@ -48,9 +59,9 @@ export function StoreProvider({ children, fallback }: { children: ReactNode; fal
 
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);
-    const d = pending.current;
+    const s = pending.current;
     pending.current = null;
-    if (d) saveApp(d).catch((e) => setError('儲存失敗：' + (e instanceof Error ? e.message : String(e))));
+    if (s) saveAll(s.data, s.meta).catch((e) => setError('儲存失敗：' + (e instanceof Error ? e.message : String(e))));
   }, []);
 
   useEffect(() => {
@@ -64,7 +75,7 @@ export function StoreProvider({ children, fallback }: { children: ReactNode; fal
   }, [flush]);
 
   const commit = useCallback(
-    (next: AppData) => {
+    (next: State) => {
       pending.current = next;
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flush, 250);
@@ -72,42 +83,56 @@ export function StoreProvider({ children, fallback }: { children: ReactNode; fal
     [flush],
   );
 
-  const update = useCallback(
-    (fn: (draft: AppData) => void) => {
-      setData((cur) => {
-        if (!cur) return cur;
-        const draft = structuredClone(cur);
-        fn(draft);
-        commit(draft);
-        return draft;
-      });
-    },
-    [commit],
-  );
-
-  const replace = useCallback(
-    (next: AppData) => {
-      setData(next);
-      setYear((y) => pickYear(next, y));
+  const set = useCallback(
+    (fn: (cur: State) => State, now = false) => {
+      const cur = latest.current;
+      if (!cur) return;
+      const next = fn(cur);
+      latest.current = next;
+      setState(next);
+      setYear((y) => pickYear(next.data, y));
       commit(next);
-      flush();
+      if (now) window.setTimeout(flush, 0);
     },
     [commit, flush],
   );
 
+  const update = useCallback(
+    (fn: (draft: AppData) => void) =>
+      set((cur) => {
+        const draft = structuredClone(cur.data);
+        fn(draft);
+        return withStamps(cur, draft);
+      }),
+    [set],
+  );
+
+  const replace = useCallback((data: AppData) => set((cur) => withStamps(cur, data), true), [set]);
+
+  const applySync = useCallback(
+    (data: AppData | null, meta: Partial<SyncMeta>) => set((cur) => ({ data: data ?? cur.data, meta: { ...cur.meta, ...meta } }), true),
+    [set],
+  );
+
+  const getLatest = useCallback(() => latest.current!, []);
+
   const value = useMemo<Store | null>(() => {
-    if (!data) return null;
+    if (!state) return null;
+    const { data, meta } = state;
     const y = pickYear(data, year);
     return {
       data,
+      meta,
       year: y,
       book: data.years[y],
       years: Object.keys(data.years).map(Number).sort((a, b) => a - b),
       setYear,
       update,
       replace,
+      applySync,
+      getLatest,
     };
-  }, [data, year, update, replace]);
+  }, [state, year, update, replace, applySync, getLatest]);
 
   if (!value) return <>{fallback(error)}</>;
   return (

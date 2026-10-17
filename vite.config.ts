@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
+import { mockDrive } from './mock-drive';
 import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
@@ -11,6 +12,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    mockDrive(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],

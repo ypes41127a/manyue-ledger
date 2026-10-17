@@ -11,6 +11,8 @@ import { Onboarding } from './Onboarding';
 import { SettingsPage } from './SettingsPage';
 import { defaultFillMonth, needsHomeScreenHint, overdueMonth } from './status';
 import { StocksPage } from './StocksPage';
+import { SyncProvider, useSync } from '../sync/SyncProvider';
+import { SyncChip, SyncNotices } from './SyncUI';
 import { Wizard } from './Wizard';
 
 type Page = 'ledger' | 'stocks' | 'settings' | 'help';
@@ -38,7 +40,9 @@ export function App() {
         </div>
       )}
     >
-      <Root />
+      <SyncProvider>
+        <Root />
+      </SyncProvider>
     </StoreProvider>
   );
 }
@@ -52,7 +56,8 @@ function Root() {
 }
 
 function Shell() {
-  const { data, book, year, years, setYear, update, replace } = useStore();
+  const { data, meta, book, year, years, setYear, update, replace } = useStore();
+  const sync = useSync();
   const [page, setPage] = useState<Page>('ledger');
   const [wizard, setWizard] = useState<number | null>(null);
   const [hideIos, setHideIos] = useState(false);
@@ -61,7 +66,11 @@ function Shell() {
   const days = daysSince(s.lastBackupAt);
   const hasData = Object.values(data.years).some((b) => b.months.some((m) => m.started));
   const backupDue = !s.isSample && hasData && (days === null || days > BACKUP_REMIND_DAYS);
-  const fill = (m?: number) => setWizard(m ?? defaultFillMonth(book));
+  const fill = (m?: number) => {
+    // 已連結雲端但授權到期：開始填寫前先同步，取得其他裝置的最新資料
+    if (meta.linked && sync.status === 'needs-auth') void sync.connect();
+    setWizard(m ?? defaultFillMonth(book));
+  };
   const go = (p: Page) => {
     setPage(p);
     window.scrollTo(0, 0);
@@ -80,6 +89,7 @@ function Shell() {
             ))}
           </nav>
           <div className="flex-1" />
+          <SyncChip />
           <select aria-label="切換年份" value={year} onChange={(e) => setYear(Number(e.target.value))} className="h-9 rounded-lg border border-white/30 bg-transparent px-2 !text-sm text-white">
             {years.map((y) => (
               <option key={y} value={y} className="text-black">{y} 年</option>
@@ -89,6 +99,7 @@ function Shell() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-3 px-4 pt-4">
+        <SyncNotices />
         {s.isSample && (
           <Banner tone="info" action={<Button onClick={() => window.confirm('確定清除範例資料，從空白開始設定？') && replace(emptyAppData(new Date().getFullYear()))}>清除範例，開始使用</Button>}>
             目前顯示的是<b>範例資料</b>，可以隨意點選試玩。
@@ -118,7 +129,8 @@ function Shell() {
         )}
         {backupDue && (
           <Banner action={<Button variant="primary" onClick={() => exportBackup(data, update)}>下載備份</Button>}>
-            {days === null ? '你還沒有下載過備份。' : `距離上次備份已經 ${days} 天。`}資料只存在這台裝置，建議現在備份。
+            {days === null ? '你還沒有下載過備份。' : `距離上次備份已經 ${days} 天。`}
+            {meta.linked ? '雲端同步不能取代備份（誤刪的資料也會被同步出去），建議定期下載一份。' : '資料只存在這台裝置，建議現在備份。'}
           </Banner>
         )}
 

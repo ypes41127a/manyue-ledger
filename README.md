@@ -61,6 +61,40 @@ npm run build      # 產生正式版到 dist/
 
 每次推送都會先跑單元測試，測試沒過就不會部署。
 
+## 雲端同步（Google 雲端硬碟）
+
+使用者可選擇用 Google 帳號登入，資料會同步到**使用者自己**雲端硬碟中本網頁專屬的隱藏資料夾（`appDataFolder`）。網站沒有伺服器，開發者看不到任何人的資料。
+
+- 權限只有 `drive.appdata`（Google 分類為非敏感）與 `openid email`。
+- 資料拆成「共用設定／每年項目設定／每個月」等單位，各自記錄修改時間，合併時每個單位保留較新的一份。
+- 同步改動本機資料前會自動快照（保留 5 份），覆蓋雲端前會在雲端留備份（保留 3 份）。
+- 用戶端 ID 設定在 `src/sync/config.ts` 的 `GOOGLE_CLIENT_ID`。**留空時正式網站不顯示同步功能**。
+
+### 本機測試同步
+
+`npm start` 時若沒有設定用戶端 ID（或網址加上 `?mockdrive`），會改用開發伺服器內建的模擬雲端硬碟，不需要 Google 帳號。用 `http://localhost:5174` 與 `http://127.0.0.1:5174` 兩個網址開啟，就是兩台互相同步的「裝置」。開發伺服器重開後模擬資料會清空。
+
+### Google Cloud 設定（全部免費，不需要綁信用卡）
+
+畫面上出現「免費試用」或「啟用帳單」的提示時都不用理會。
+
+1. 到 <https://console.cloud.google.com>，上方「選取專案」→「新增專案」，名稱填 `manyue-ledger` →「建立」，並切換到這個專案。
+2. 左上選單 →「API 和服務」→「程式庫」，搜尋 **Google Drive API** →「啟用」。
+3. 左上選單 →「Google Auth Platform」→「開始」：
+   - 應用程式名稱：`滿月記帳`；使用者支援電子郵件：選一個可以公開的 Email（使用者在 Google 登入畫面上看得到）。
+   - 目標對象：**外部**；聯絡資訊填你的 Email；勾選同意 →「建立」。
+4. 「品牌塑造」：
+   - 應用程式首頁：`https://ypes41127a.github.io/manyue-ledger/`
+   - 隱私權政策：`https://ypes41127a.github.io/manyue-ledger/privacy.html`
+   - 已授權網域：`ypes41127a.github.io`
+   - **不要上傳標誌**（上傳標誌會需要額外審核）→「儲存」。
+5. 「資料存取」→「新增或移除範圍」，在「手動新增範圍」貼上 `https://www.googleapis.com/auth/drive.appdata` →「新增至表格」，再勾選 `openid` 與 `.../auth/userinfo.email` →「更新」→「儲存」。
+6. 「目標對象」→「發布應用程式」→「確認」，狀態變成「實際運作中」。
+7. 「用戶端」→「建立用戶端」：
+   - 應用程式類型：**網頁應用程式**，名稱隨意。
+   - 已授權的 JavaScript 來源：`https://ypes41127a.github.io` 和 `http://localhost:5174`（**不要**加路徑或結尾的 `/`）。
+   - 「建立」後複製「用戶端 ID」（`....apps.googleusercontent.com`），填進 `src/sync/config.ts`。
+
 ## 改資料格式時一定要做的事
 
 使用者的資料存在他們自己的裝置上，更新網站時必須能自動升級，不可遺失：
@@ -80,8 +114,10 @@ src/core/     計算邏輯與資料模型（純函式，有單元測試）
   carry.ts      帶入上個月、建立新年度
   migrate.ts    資料版本升級
   backup.ts     備份檔格式
+  sync.ts       同步：拆單位、修改時間、合併
   sample.ts     範例資料（取自原始 Excel 填寫範例）
 src/db/       IndexedDB 存取與 React 狀態
+src/sync/     Google 登入、雲端硬碟讀寫、同步流程
 src/export/   匯出 Excel
 src/ui/       畫面
 tests/        單元測試（以 Excel 填寫範例的數字驗證）

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { sampleAppData } from '../core/sample';
 import { useStore } from '../db/store';
 import { CurrencyEditor, FillDayPicker, HoldingsEditor, ItemsEditor } from './editors';
-import { Button, Card } from './kit';
+import { Banner, Button, Card } from './kit';
+import { useSync } from '../sync/SyncProvider';
 
 const SETUP = ['帳戶', '持股', '外幣與匯率', '每月填寫日'] as const;
 
 export function Onboarding() {
   const { update, replace } = useStore();
+  const sync = useSync();
   const [stage, setStage] = useState<'welcome' | 'choose' | 'setup'>('welcome');
   const [step, setStep] = useState(0);
   const finish = () => update((d) => (d.settings.onboarded = true));
@@ -44,6 +46,13 @@ export function Onboarding() {
             <div className="font-semibold">載入範例資料試玩</div>
             <div className="mt-1 text-sm text-ink2">先用一整年的範例數字看看圖表和表格長什麼樣子，之後可以一鍵清除再開始。</div>
           </button>
+          {sync.available && (
+            <button type="button" className="block w-full rounded-2xl border border-line bg-surface p-4 text-left hover:border-accent" disabled={sync.status === 'syncing'} onClick={() => void sync.connect({ restoreOnly: true })}>
+              <div className="font-semibold">{sync.status === 'syncing' ? '連線中…' : '我在別的裝置用過，登入 Google 取回資料'}</div>
+              <div className="mt-1 text-sm text-ink2">在其他裝置登入同步過的話，用同一個 Google 帳號登入就能取回所有資料。</div>
+            </button>
+          )}
+          {sync.message && <Banner>{sync.message}</Banner>}
           <Button variant="ghost" onClick={() => setStage('welcome')}>← 返回</Button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Card } from './kit';
+import { useSync } from '../sync/SyncProvider';
 
 function Q({ q, children }: { q: string; children: ReactNode }) {
   return (
@@ -11,13 +12,16 @@ function Q({ q, children }: { q: string; children: ReactNode }) {
 }
 
 export function HelpPage() {
+  const { available } = useSync();
   return (
     <div className="space-y-4">
       <Card title="滿月記帳法是什麼？">
         <div className="space-y-2 text-sm text-ink2">
           <p>不用每天記流水帳。每個月固定一天，把各個帳戶的餘額、當月收入與支出的「大項目總額」填一次，長期觀察個人淨值有沒有成長。</p>
           <p>日常的消費細項照常記在你習慣的手機記帳 App，月底把各分類的總額抄過來即可。</p>
-          <p className="text-xs text-muted">滿月記帳法由柴鼠兄弟開發。</p>
+          <p className="text-xs text-muted">
+            滿月記帳法由柴鼠兄弟開發。・<a className="text-accent underline" href="./privacy.html" target="_blank" rel="noreferrer">隱私權政策</a>
+          </p>
         </div>
       </Card>
 
@@ -48,9 +52,18 @@ export function HelpPage() {
           <p>它們會自動帶入股票分頁算出的持股現值（股數 × 月底收盤價，美股再乘以當月美元匯率），避免兩邊數字不一致。</p>
         </Q>
         <Q q="資料存在哪裡？安全嗎？">
-          <p>所有資料只存在<b>這台裝置的這個瀏覽器</b>裡，不會上傳到任何地方，也沒有帳號。</p>
+          <p>沒有開啟雲端同步時，所有資料只存在<b>這台裝置的這個瀏覽器</b>裡，不會上傳到任何地方。</p>
           <p>缺點是：換手機、換瀏覽器、清除瀏覽器資料，或 iPhone 的 Safari 太久沒開，資料都可能不見。所以請養成<b>每月填完就下載備份</b>的習慣。</p>
+          {available && <p>開啟雲端同步後，資料會另外存一份到<b>你自己的 Google 雲端硬碟</b>，網站開發者看不到。</p>}
         </Q>
+        {available && (
+          <Q q="怎麼在手機和電腦同步？">
+            <p>到「設定 → 雲端同步」按「用 Google 登入並同步」。在另一台裝置打開這個網頁，選「我在別的裝置用過，登入 Google 取回資料」，或到設定頁用<b>同一個 Google 帳號</b>登入。</p>
+            <p>之後修改約 5 秒會自動同步。Google 授權約一小時到期，打開網頁時點一下畫面上方的「同步」即可，已登入 Google 時不用再輸入密碼。</p>
+            <p>兩台裝置都改了同一個月時，會保留較晚修改的版本並提示你。如果結果不對，可到「設定 → 雲端同步 → 還原同步前的資料」救回。</p>
+            <p>資料存在你雲端硬碟中本網頁專屬的隱藏資料夾，本網頁看不到你雲端硬碟的其他檔案。iPhone 加入主畫面的 App 有時無法開啟 Google 登入視窗，遇到時請改用 Safari 或 Chrome 分頁登入。</p>
+          </Q>
+        )}
         <Q q="怎麼備份？怎麼搬到新手機？">
           <p>到「設定 → 備份與還原」按「匯出備份」，會下載一個 JSON 檔。把它存到雲端硬碟、或用 LINE／Email 傳給自己。</p>
           <p>在新裝置打開這個網頁，選「設定 → 匯入備份」並選那個檔案，就會還原全部資料。</p>
