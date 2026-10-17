@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { preloadGoogle } from '../sync/google';
 import { sampleAppData } from '../core/sample';
 import { useStore } from '../db/store';
 import { CurrencyEditor, FillDayPicker, HoldingsEditor, ItemsEditor } from './editors';
@@ -13,6 +14,10 @@ export function Onboarding() {
   const [stage, setStage] = useState<'welcome' | 'choose' | 'setup'>('welcome');
   const [step, setStep] = useState(0);
   const finish = () => update((d) => (d.settings.onboarded = true));
+
+  useEffect(() => {
+    if (stage === 'choose' && sync.available) void preloadGoogle().catch(() => {});
+  }, [stage, sync.available]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">

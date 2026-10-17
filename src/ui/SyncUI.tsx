@@ -3,6 +3,7 @@ import type { BackupSummary } from '../core/backup';
 import { unitLabel } from '../core/sync';
 import { listSnapshots, loadSnapshot } from '../db/db';
 import { useStore } from '../db/store';
+import { preloadGoogle } from '../sync/google';
 import { useSync } from '../sync/SyncProvider';
 import type { SyncStatus } from '../sync/SyncProvider';
 import { daysSince, fmtDate, fmtMoney } from './format';
@@ -127,6 +128,11 @@ export function SyncCard() {
   useEffect(() => {
     if (showSnaps) void listSnapshots().then(setSnaps);
   }, [showSnaps, meta.lastSyncAt]);
+
+  // 先載入 Google 登入元件，按下登入時才能立即開啟登入視窗
+  useEffect(() => {
+    if (sync.available) void preloadGoogle().catch(() => {});
+  }, [sync.available]);
 
   if (!sync.available) return null;
 
