@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backupFileName, parseBackup, toBackup } from '../src/core/backup';
-import { createNextYear, prefillMonth, removeHolding, removeItem } from '../src/core/carry';
+import { addItem, createNextYear, prefillMonth, removeHolding, removeItem } from '../src/core/carry';
 import { emptyAppData, emptyYear } from '../src/core/defaults';
 import { buildReminderIcs } from '../src/core/ics';
 import { computeLedger } from '../src/core/ledger';
@@ -181,5 +181,26 @@ describe('預設範本', () => {
     expect(by('非固定支出')).toEqual(['餐費', '交通費', '娛樂/購物費', '旅遊', '其他']);
     expect(items.filter((i) => i.note).map((i) => i.group)).toEqual(['固定支出', '非固定支出']);
     expect(new Set(emptyYear(2026).items.map((i) => i.id)).size).toBe(emptyYear(2026).items.length);
+  });
+});
+
+describe('新增支出項目', () => {
+  it('放在同分類最後面，不影響其他分類順序', () => {
+    const b = emptyYear(2026);
+    addItem(b, { id: 'e-parking', section: 'expense', group: '固定支出', name: '停車費' });
+    addItem(b, { id: 'e-pet', section: 'expense', group: '非固定支出', name: '寵物' });
+    const names = (g: string) => b.items.filter((i) => i.group === g).map((i) => i.name);
+    expect(names('固定支出')).toEqual(['孝親費', '房租', '水電費', '電信費', '訂閱費', '其他', '停車費']);
+    expect(names('非固定支出')).toEqual(['餐費', '交通費', '娛樂/購物費', '旅遊', '其他', '寵物']);
+    const sections = b.items.map((i) => i.section);
+    expect(sections.lastIndexOf('expense')).toBeLessThan(sections.indexOf('invest'));
+  });
+
+  it('新分類放在該區塊最後', () => {
+    const b = emptyYear(2026);
+    addItem(b, { id: 'e-x', section: 'expense', group: '醫療', name: '看診' });
+    const exp = b.items.filter((i) => i.section === 'expense');
+    expect(exp[exp.length - 1].name).toBe('看診');
+    expect(b.items.findIndex((i) => i.id === 'e-x')).toBeLessThan(b.items.findIndex((i) => i.section === 'invest'));
   });
 });

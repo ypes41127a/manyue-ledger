@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { moveInList, removeHolding, removeItem } from '../core/carry';
+import { addItem, moveInList, removeHolding, removeItem } from '../core/carry';
 import { LAST_DAY } from '../core/ics';
 import { newId } from '../core/safe';
 import { rateOf } from '../core/stocks';
@@ -24,7 +24,9 @@ export function ItemsEditor({ section }: { section: Section }) {
   const items = book.items.filter((i) => i.section === section);
   const groups = [...new Set(items.map((i) => i.group))];
   const [name, setName] = useState('');
-  const [group, setGroup] = useState('');
+  const NEW_GROUP = '__new__';
+  const [group, setGroup] = useState(groups[0] ?? '');
+  const [newGroup, setNewGroup] = useState('');
   const [kind, setKind] = useState<'twd' | 'fx' | 'stockTW' | 'stockUS'>('twd');
   const [currency, setCurrency] = useState(book.currencies[0]?.code ?? '');
   const flow = section === 'income' || section === 'expense' || section === 'invest';
@@ -44,11 +46,15 @@ export function ItemsEditor({ section }: { section: Section }) {
     const auto = kind === 'stockTW' || kind === 'stockUS';
     const n = name.trim() || (auto ? (kind === 'stockTW' ? '台股' : '美股') : '');
     if (!n) return;
-    const item: Item = { id: newId(section[0]), section, group: group.trim() || (auto ? '股票' : kind === 'fx' ? '外幣' : DEFAULT_GROUP[section]), name: n };
+    const item: Item = { id: newId(section[0]), section, group: (group === NEW_GROUP ? newGroup : group).trim() || (auto ? '股票' : kind === 'fx' ? '外幣' : DEFAULT_GROUP[section]), name: n };
     if (section === 'asset' && kind !== 'twd') item.kind = kind;
     if (item.kind === 'fx') item.currency = currency;
-    edit((b) => b.items.push(item));
+    edit((b) => addItem(b, item));
     setName('');
+    if (group === NEW_GROUP) {
+      setGroup(item.group);
+      setNewGroup('');
+    }
   };
 
   return (
@@ -102,7 +108,17 @@ export function ItemsEditor({ section }: { section: Section }) {
           <div className="min-w-32 flex-1">
             <TextInput label="新項目名稱" placeholder="名稱，例如：我的銀行" value={name} onChange={setName} />
           </div>
-          <input aria-label="新項目分類" list={`groups-${section}`} placeholder="分類" value={group} onChange={(e) => setGroup(e.target.value)} className="h-11 w-24 rounded-xl border border-line bg-surface px-2 text-ink" />
+          <select aria-label="新項目分類" className={select} value={groups.includes(group) || group === NEW_GROUP ? group : NEW_GROUP} onChange={(e) => setGroup(e.target.value)}>
+            {groups.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+            <option value={NEW_GROUP}>＋ 新分類…</option>
+          </select>
+          {(group === NEW_GROUP || !groups.includes(group)) && (
+            <div className="w-28">
+              <TextInput label="新分類名稱" placeholder="新分類名稱" value={newGroup} onChange={setNewGroup} />
+            </div>
+          )}
           {section === 'asset' && (
             <select aria-label="帳戶類型" className={select} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
               <option value="twd">台幣</option>

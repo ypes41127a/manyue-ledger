@@ -1,7 +1,7 @@
 import { emptyMonth } from './defaults';
 import { rateOf } from './stocks';
 import { MARKETS } from './types';
-import type { MonthEntry, YearBook } from './types';
+import type { Item, MonthEntry, YearBook } from './types';
 
 function carriesOver(book: YearBook, itemId: string): boolean {
   const it = book.items.find((i) => i.id === itemId);
@@ -47,6 +47,16 @@ export function createNextYear(prev: YearBook): YearBook {
     baseRates,
     months: Array.from({ length: 12 }, emptyMonth),
   };
+}
+
+/** 新增項目，放在同區塊同分類的最後一個項目之後（沒有同分類時放在該區塊最後） */
+export function addItem(book: YearBook, item: Item): void {
+  let at = -1;
+  book.items.forEach((i, k) => {
+    if (i.section === item.section && i.group === item.group) at = k;
+  });
+  if (at < 0) book.items.forEach((i, k) => i.section === item.section && (at = k));
+  book.items.splice(at < 0 ? book.items.length : at + 1, 0, item);
 }
 
 export function removeItem(book: YearBook, id: string): void {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { prefillMonth } from '../core/carry';
+import { addItem, prefillMonth, removeItem } from '../core/carry';
+import { newId } from '../core/safe';
 import { rateOf } from '../core/stocks';
 import { MARKET_LABEL, MARKETS, MONTHS } from '../core/types';
 import type { Item, Market, MarketMonth, MonthEntry, Section } from '../core/types';
@@ -8,7 +9,7 @@ import { useStore } from '../db/store';
 import { exportBackup } from './actions';
 import { HoldingsEditor } from './editors';
 import { fmtDate, fmtMoney, fmtPct, fmtSigned, monthLabel } from './format';
-import { Button, Card, NumInput } from './kit';
+import { Button, Card, NumInput, TextInput } from './kit';
 import { STATUS_TEXT, useLedger } from './LedgerPage';
 import { monthStatus } from './status';
 
@@ -66,9 +67,32 @@ export function Wizard({ initialMonth, onClose }: { initialMonth: number; onClos
     const items = itemsOf(section);
     if (!items.length) return <p className="text-sm text-muted">這個區塊沒有項目，可到「設定」新增。</p>;
     const groups = [...new Set(items.map((i) => i.group))];
+    // 支出項目可以直接在這裡增減
+    const editable = section === 'expense';
     return groups.map((g) => (
       <Card key={g} title={g} className="mb-3">
-        {items.filter((i) => i.group === g).map((it) => itemField(it))}
+        {items
+          .filter((i) => i.group === g)
+          .map((it) =>
+            editable ? (
+              <div key={it.id} className="flex items-start gap-1.5">
+                <div className="min-w-0 flex-1">{itemField(it)}</div>
+                <button
+                  type="button"
+                  aria-label={`刪除 ${it.name}`}
+                  className="mt-2.5 size-9 shrink-0 rounded-lg border border-line text-danger hover:bg-sunken"
+                  onClick={() =>
+                    window.confirm(`確定刪除「${it.name}」？${year} 年各月已填的「${it.name}」金額也會一併刪除。`) && update((d) => removeItem(d.years[year], it.id))
+                  }
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              itemField(it)
+            ),
+          )}
+        {editable && <AddItem onAdd={(name) => update((d) => addItem(d.years[year], { id: newId('e'), section, group: g, name }))} />}
       </Card>
     ));
   }
@@ -343,5 +367,38 @@ export function Wizard({ initialMonth, onClose }: { initialMonth: number; onClos
         </footer>
       )}
     </div>
+  );
+}
+
+function AddItem({ onAdd }: { onAdd: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  if (!open) {
+    return (
+      <button type="button" className="mt-2 text-sm text-accent" onClick={() => setOpen(true)}>
+        ＋ 新增項目
+      </button>
+    );
+  }
+  const submit = () => {
+    if (!name.trim()) return;
+    onAdd(name.trim());
+    setName('');
+    setOpen(false);
+  };
+  return (
+    <form
+      className="mt-2 flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <div className="min-w-0 flex-1">
+        <TextInput label="新項目名稱" placeholder="項目名稱，例如：停車費" value={name} onChange={setName} />
+      </div>
+      <Button variant="primary" type="submit">新增</Button>
+      <Button onClick={() => setOpen(false)}>取消</Button>
+    </form>
   );
 }
