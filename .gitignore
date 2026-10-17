@@ -1,0 +1,9 @@
+node_modules/
+.tools/
+dist/
+dev-dist/
+.DS_Store
+*.local
+
+# 原始 Excel 範本含個人帳戶名稱，且為他人著作，不要上傳到公開的 GitHub
+*.xlsx

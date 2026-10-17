@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+  --bg: #f9f9f7;
+  --surface: #fcfcfb;
+  --sunken: #f0efec;
+  --ink: #0b0b0b;
+  --ink2: #52514e;
+  --muted: #898781;
+  --line: #e1e0d9;
+  --axis: #c3c2b7;
+  --brand: #1f3a5f;
+  --brand-ink: #ffffff;
+  --accent: #1c5cab;
+  --good: #006300;
+  --warn-bg: #fdf3d7;
+  --warn-ink: #6b4a00;
+  --danger: #b42318;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s5: #e87ba4;
+  --s6: #008300;
+  --s7: #4a3aa7;
+  --s8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --sunken: #262624;
+    --ink: #ffffff;
+    --ink2: #c3c2b7;
+    --muted: #898781;
+    --line: #2c2c2a;
+    --axis: #383835;
+    --brand: #16283f;
+    --accent: #6da7ec;
+    --good: #0ca30c;
+    --warn-bg: #3a2f10;
+    --warn-ink: #f5d98a;
+    --danger: #f97066;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --s6: #008300;
+    --s7: #9085e9;
+    --s8: #e66767;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-good: var(--good);
+  --color-warnbg: var(--warn-bg);
+  --color-warnink: var(--warn-ink);
+  --color-danger: var(--danger);
+  --font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  overscroll-behavior-y: none;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+/* iOS 在字級小於 16px 的輸入框會自動放大畫面 */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-wrapper *:focus {
+  outline: none;
+}
