@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backupFileName, parseBackup, toBackup } from '../src/core/backup';
-import { addItem, createNextYear, prefillMonth, removeHolding, removeItem } from '../src/core/carry';
+import { addItem, createNextYear, groupsOf, moveGroup, moveItem, prefillMonth, removeHolding, removeItem, renameGroup, setItemGroup } from '../src/core/carry';
 import { emptyAppData, emptyYear } from '../src/core/defaults';
 import { buildReminderIcs } from '../src/core/ics';
 import { computeLedger } from '../src/core/ledger';
@@ -202,5 +202,44 @@ describe('新增支出項目', () => {
     const exp = b.items.filter((i) => i.section === 'expense');
     expect(exp[exp.length - 1].name).toBe('看診');
     expect(b.items.findIndex((i) => i.id === 'e-x')).toBeLessThan(b.items.findIndex((i) => i.section === 'invest'));
+  });
+});
+
+describe('分類管理', () => {
+  const names = (b: ReturnType<typeof emptyYear>, g: string) => b.items.filter((i) => i.section === 'asset' && i.group === g).map((i) => i.name);
+
+  it('項目只在同分類內移動', () => {
+    const b = emptyYear(2026);
+    moveItem(b, 'a-bank-b', -1);
+    expect(names(b, '生活')).toEqual(['銀行帳戶 B', '銀行帳戶 A', '現金/電子支付']);
+    moveItem(b, 'a-bank-b', -1);
+    expect(names(b, '生活')).toEqual(['銀行帳戶 B', '銀行帳戶 A', '現金/電子支付']);
+    moveItem(b, 'a-cash', 1);
+    expect(names(b, '生活')[2]).toBe('現金/電子支付');
+  });
+
+  it('整個分類上下移動', () => {
+    const b = emptyYear(2026);
+    moveGroup(b, 'asset', '投資', -1);
+    expect(groupsOf(b, 'asset')).toEqual(['投資', '生活', '備用', '外幣', '股票']);
+    expect(names(b, '生活')).toEqual(['銀行帳戶 A', '銀行帳戶 B', '現金/電子支付']);
+    expect(b.items.filter((i) => i.section === 'income').length).toBe(emptyYear(2026).items.filter((i) => i.section === 'income').length);
+  });
+
+  it('分類改名套用到整組；改成既有名稱會合併', () => {
+    const b = emptyYear(2026);
+    renameGroup(b, 'asset', '生活', '日常');
+    expect(names(b, '日常')).toHaveLength(3);
+    expect(groupsOf(b, 'asset')[0]).toBe('日常');
+    renameGroup(b, 'asset', '備用', '投資');
+    expect(names(b, '投資')).toEqual(['投資帳戶', '備用帳戶']);
+    expect(groupsOf(b, 'asset')).not.toContain('備用');
+  });
+
+  it('項目換分類，放到目標分類最後', () => {
+    const b = emptyYear(2026);
+    setItemGroup(b, 'a-cash', '備用');
+    expect(names(b, '備用')).toEqual(['備用帳戶', '現金/電子支付']);
+    expect(names(b, '生活')).toEqual(['銀行帳戶 A', '銀行帳戶 B']);
   });
 });

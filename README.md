@@ -95,6 +95,13 @@ npm run build      # 產生正式版到 dist/
    - 已授權的 JavaScript 來源：`https://ypes41127a.github.io` 和 `http://localhost:5174`（**不要**加路徑或結尾的 `/`）。
    - 「建立」後複製「用戶端 ID」（`....apps.googleusercontent.com`），填進 `src/sync/config.ts`。
 
+## 自動匯率與股票搜尋
+
+- **匯率**：填寫精靈會自動帶入填寫當天（補填過去月份時用該月最後一天）的匯率，來源是 [currency-api](https://github.com/fawazahmed0/exchange-api) 的市場中間價，免金鑰。抓不到時沿用上個月，使用者手動改過的幣別不會被覆蓋。程式在 `src/data/fx.ts`。
+- **股票搜尋**：證交所、櫃買中心不允許網頁直接讀取，所以由 `scripts/update-securities.mjs` 下載台股（上市、上櫃、ETF）與美股（NASDAQ 公布的清單）代碼，存成 `public/data/securities.json`。GitHub Actions 每次部署與每週一都會重新下載；下載失敗時沿用專案內的檔案。美股的中文名稱寫在 `src/data/securities.ts` 的 `US_ALIASES`。
+- 本機手動更新清單：`npm run update-securities`。
+- 注意：公開專案 60 天沒有任何更新時，GitHub 會自動停用每週排程，清單就不會再更新（到 Actions 頁面可以重新啟用）。
+
 ## 改資料格式時一定要做的事
 
 使用者的資料存在他們自己的裝置上，更新網站時必須能自動升級，不可遺失：

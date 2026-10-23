@@ -28,11 +28,11 @@ export function HelpPage() {
       <Card title="每個月怎麼填？">
         <ol className="list-decimal space-y-2 pl-5 text-sm text-ink2">
           <li>在「記帳」分頁按<b className="text-ink">填寫本月</b>。</li>
-          <li><b className="text-ink">匯率</b>：預設帶入上個月，有變再改。</li>
+          <li><b className="text-ink">匯率</b>：自動帶入填寫當天的匯率（補填過去月份時用該月最後一天），需要的話可以修改。沒有網路時沿用上個月。</li>
           <li><b className="text-ink">資產</b>：打開各家銀行 App，把目前餘額填進去。外幣帳戶填原幣金額（例如 1,000 美元），會自動換算。</li>
           <li><b className="text-ink">收入、支出</b>：填這個月的總額。固定項目會自動帶入上個月的數字。金額欄可以直接打算式，例如 <code>500+450+780</code>。</li>
           <li><b className="text-ink">投資</b>：這個月從存款轉去買股票、換外幣的金額。這些錢變成了資產，不算花掉。</li>
-          <li><b className="text-ink">持股、損益與股息</b>：填每檔股票的股數與月底收盤價，以及成本、已實現損益、交易成本、收到的股息。美股都以美元輸入。</li>
+          <li><b className="text-ink">持股、損益與股息</b>：新增持股時輸入名稱或代碼就能搜尋（例如「台積電」「0050」「蘋果」），點選即加入。填每檔股票的股數與月底收盤價，以及成本、已實現損益、交易成本、收到的股息。美股都以美元輸入。</li>
           <li><b className="text-ink">確認</b>後按「完成本月」，再下載備份。</li>
         </ol>
         <p className="mt-3 text-sm text-ink2">每一步都會自動儲存，中途關掉也不會遺失。之後想修改，點表格上方的月份即可。</p>

@@ -32,7 +32,12 @@ export default defineConfig({
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // 股票清單較大，用到時才下載；下載過一次後離線也能搜尋
+        runtimeCaching: [{ urlPattern: /\/data\/securities\.json$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'securities' } }],
+      },
     }),
   ],
   server: { host: '127.0.0.1', port: 5174 },

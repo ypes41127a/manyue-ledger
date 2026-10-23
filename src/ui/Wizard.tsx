@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { addItem, prefillMonth, removeItem } from '../core/carry';
 import { newId } from '../core/safe';
 import { rateOf } from '../core/stocks';
+import { fetchRatesOn, rateTargetDate } from '../data/fx';
 import { MARKET_LABEL, MARKETS, MONTHS } from '../core/types';
 import type { Item, Market, MarketMonth, MonthEntry, Section } from '../core/types';
 import { useStore } from '../db/store';
@@ -12,6 +13,8 @@ import { fmtDate, fmtMoney, fmtPct, fmtSigned, monthLabel } from './format';
 import { Button, Card, NumInput, TextInput } from './kit';
 import { STATUS_TEXT, useLedger } from './LedgerPage';
 import { monthStatus } from './status';
+
+const fmtDay = (iso?: string) => (iso ? `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}` : '');
 
 const STEPS = ['月份', '匯率', '資產', '收入', '支出', '投資', '持股', '損益與股息', '確認'] as const;
 
@@ -26,7 +29,8 @@ function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; 
 }
 
 export function Wizard({ initialMonth, onClose }: { initialMonth: number; onClose: () => void }) {
-  const { data, book, year, update } = useStore();
+  const { data, book, year, update, getLatest } = useStore();
+  const [fx, setFx] = useState<{ state: 'idle' | 'loading' | 'error'; target?: string }>({ state: 'idle' });
   const l = useLedger();
   const [month, setMonth] = useState(initialMonth);
   const [step, setStep] = useState(0);
@@ -44,9 +48,48 @@ export function Wizard({ initialMonth, onClose }: { initialMonth: number; onClos
       else (e.stock[mk] as Record<string, number | string>)[key] = v;
     });
 
+  /**
+   * 自動帶入匯率（填寫當天，不超過該月最後一天）。
+   * 已完成的月份不會自動更新；使用者手動改過的幣別不會被覆蓋，除非按「重新抓取」。
+   */
+  const autoRates = async (force = false) => {
+    const b = getLatest().data.years[year];
+    const e = b.months[month];
+    const codes = b.currencies.map((c) => c.code);
+    const target = rateTargetDate(year, month);
+    if (!codes.length || (!force && (e.completed || e.rateInfo?.target === target))) return;
+    const manual = force ? [] : (e.rateInfo?.manual ?? []);
+    const want = codes.filter((c) => !manual.includes(c));
+    if (!want.length) return;
+    setFx({ state: 'loading', target });
+    try {
+      const r = await fetchRatesOn(target, want);
+      update((d) => {
+        const x = d.years[year].months[month];
+        for (const c of want) if (r.rates[c]) x.rates[c] = r.rates[c];
+        const kept = force ? [] : (x.rateInfo?.manual ?? []);
+        x.rateInfo = { date: r.date, target, manual: kept };
+      });
+      setFx({ state: 'idle' });
+    } catch {
+      setFx({ state: 'error', target });
+    }
+  };
+  const setRate = (code: string) => (v: number | undefined) =>
+    edit((e) => {
+      if (v === undefined) delete e.rates[code];
+      else e.rates[code] = v;
+      const manual = new Set(e.rateInfo?.manual ?? []);
+      manual.add(code);
+      e.rateInfo = { ...e.rateInfo, manual: [...manual] };
+    });
+
   const go = (to: number) => {
-    // 離開「月份」步驟時帶入上個月數值（已填過的月份不會被覆蓋）
-    if (step === 0 && to > 0) update((d) => prefillMonth(d.years[year], month, d.years[year - 1]));
+    // 離開「月份」步驟時帶入上個月數值（已填過的月份不會被覆蓋），並自動抓取匯率
+    if (step === 0 && to > 0) {
+      update((d) => prefillMonth(d.years[year], month, d.years[year - 1]));
+      void autoRates();
+    }
     setStep(Math.max(0, Math.min(STEPS.length - 1, to)));
     document.getElementById('wizard-scroll')?.scrollTo(0, 0);
   };
@@ -182,12 +225,27 @@ export function Wizard({ initialMonth, onClose }: { initialMonth: number; onClos
     body = (
       <Card title="本月匯率">
         {book.currencies.length === 0 && <p className="text-sm text-muted">沒有設定外幣，直接下一步。</p>}
-        {book.currencies.map((c) => (
-          <Field key={c.code} label={`${c.name}（${c.code}）`} hint={`1 ${c.code} ＝ ${rateOf(book, month, c.code)} 台幣`}>
-            <NumInput label={`${c.name}匯率`} value={entry.rates[c.code]} placeholder={String(rateOf(book, month, c.code))} onChange={setIn('rates', c.code)} />
-          </Field>
-        ))}
-        <p className="mt-2 text-xs text-muted">預設帶入上個月的匯率。可查銀行牌告或 Google 搜尋「美金 台幣」後修改。</p>
+        {fx.state === 'loading' && <p className="mb-2 text-sm text-ink2">正在抓取 {fmtDay(fx.target)} 的匯率…</p>}
+        {fx.state === 'error' && <p className="mb-2 rounded-xl bg-warnbg px-3 py-2 text-sm text-warnink">無法取得匯率（可能沒有網路），已沿用上個月的匯率，可以手動修改。</p>}
+        {book.currencies.map((c) => {
+          const manual = entry.rateInfo?.manual?.includes(c.code);
+          const source = manual ? '手動輸入' : entry.rateInfo?.date ? `自動帶入 ${fmtDay(entry.rateInfo.date)} 匯率` : '沿用上個月';
+          return (
+            <Field key={c.code} label={`${c.name}（${c.code}）`} hint={`${source}・1 ${c.code} ＝ ${rateOf(book, month, c.code)} 台幣`}>
+              <NumInput label={`${c.name}匯率`} value={entry.rates[c.code]} placeholder={String(rateOf(book, month, c.code))} onChange={setRate(c.code)} />
+            </Field>
+          );
+        })}
+        {book.currencies.length > 0 && (
+          <>
+            <Button className="mt-2" onClick={() => void autoRates(true)} disabled={fx.state === 'loading'}>
+              重新抓取 {fmtDay(rateTargetDate(year, month))} 匯率
+            </Button>
+            <p className="mt-2 text-xs text-muted">
+              自動帶入填寫當天的匯率（補填過去月份時用該月最後一天）。這是市場中間價，和銀行牌告的買入、賣出價會有些微差異；需要的話可以直接修改。
+            </p>
+          </>
+        )}
       </Card>
     );
   } else if (step === 2) {

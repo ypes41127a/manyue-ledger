@@ -66,6 +66,12 @@ export interface MonthEntry {
   stock: Record<Market, MarketMonth>;
   cashDiv: Record<string, number>;
   stockDiv: Record<string, number>;
+  /**
+   * 匯率來源。target：要抓的日期；date：實際取得資料的日期（當天沒資料時會往前找）；
+   * manual：使用者手動改過的幣別（不會被自動覆蓋）。
+   * 選用欄位，舊資料沒有也能正常運作，所以不需要升級資料版本。
+   */
+  rateInfo?: { target?: string; date?: string; manual?: string[] };
 }
 
 export interface YearBook {

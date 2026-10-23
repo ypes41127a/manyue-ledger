@@ -1,7 +1,7 @@
 import { emptyMonth } from './defaults';
 import { rateOf } from './stocks';
 import { MARKETS } from './types';
-import type { Item, MonthEntry, YearBook } from './types';
+import type { Item, MonthEntry, Section, YearBook } from './types';
 
 function carriesOver(book: YearBook, itemId: string): boolean {
   const it = book.items.find((i) => i.id === itemId);
@@ -57,6 +57,53 @@ export function addItem(book: YearBook, item: Item): void {
   });
   if (at < 0) book.items.forEach((i, k) => i.section === item.section && (at = k));
   book.items.splice(at < 0 ? book.items.length : at + 1, 0, item);
+}
+
+/** 在同區塊、同分類內上下移動項目 */
+export function moveItem(book: YearBook, id: string, delta: number): void {
+  const it = book.items.find((i) => i.id === id);
+  if (!it) return;
+  const idx = book.items.map((i, k) => (i.section === it.section && i.group === it.group ? k : -1)).filter((k) => k >= 0);
+  const at = idx.findIndex((k) => book.items[k].id === id);
+  const to = at + delta;
+  if (to < 0 || to >= idx.length) return;
+  [book.items[idx[at]], book.items[idx[to]]] = [book.items[idx[to]], book.items[idx[at]]];
+}
+
+/** 同區塊內各分類依出現順序排列 */
+export function groupsOf(book: YearBook, section: Section): string[] {
+  return [...new Set(book.items.filter((i) => i.section === section).map((i) => i.group))];
+}
+
+/** 把整個分類往上或往下移，分類內的項目順序不變 */
+export function moveGroup(book: YearBook, section: Section, group: string, delta: number): void {
+  const groups = groupsOf(book, section);
+  const at = groups.indexOf(group);
+  moveInList(groups, at, delta);
+  const sorted = groups.flatMap((g) => book.items.filter((i) => i.section === section && i.group === g));
+  let k = 0;
+  book.items = book.items.map((i) => (i.section === section ? sorted[k++] : i));
+}
+
+/** 分類改名，套用到該分類所有項目；改成已存在的分類名稱時會合併 */
+export function renameGroup(book: YearBook, section: Section, from: string, to: string): void {
+  const name = to.trim();
+  if (!name || name === from) return;
+  const moving = book.items.filter((i) => i.section === section && i.group === from);
+  if (groupsOf(book, section).includes(name)) {
+    book.items = book.items.filter((i) => !moving.includes(i));
+    for (const it of moving) addItem(book, { ...it, group: name });
+  } else {
+    for (const it of moving) it.group = name;
+  }
+}
+
+/** 把項目移到另一個分類（放在該分類最後） */
+export function setItemGroup(book: YearBook, id: string, group: string): void {
+  const it = book.items.find((i) => i.id === id);
+  if (!it || it.group === group) return;
+  book.items = book.items.filter((i) => i.id !== id);
+  addItem(book, { ...it, group });
 }
 
 export function removeItem(book: YearBook, id: string): void {

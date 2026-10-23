@@ -70,7 +70,7 @@ export function Onboarding() {
           </div>
           {step === 0 && (
             <Card>
-              <p className="mb-3 text-sm text-ink2">這是預設的資產帳戶。把名稱改成你自己的（例如銀行名稱），用不到的按 ✕ 刪掉，不夠的在最下面新增。收入與支出的項目之後可以在「設定」調整。</p>
+              <p className="mb-3 text-sm text-ink2">這是預設的資產帳戶，依分類排列。直接點名稱就能改成你自己的（例如銀行名稱）；用不到的按右邊「⋯」刪除；不夠的在各分類底下新增。收入與支出的項目之後可以在「設定」調整。</p>
               <ItemsEditor section="asset" />
             </Card>
           )}

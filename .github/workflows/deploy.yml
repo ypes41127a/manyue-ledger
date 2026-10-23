@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # 每週一台灣時間凌晨 3 點重新部署，順便更新股票代碼清單
+  schedule:
+    - cron: '0 19 * * 0'
 
 permissions:
   contents: read
@@ -25,6 +28,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: 更新股票代碼清單（失敗時沿用專案內的清單）
+        run: node scripts/update-securities.mjs || echo "::warning::股票清單更新失敗，沿用專案內的清單"
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
